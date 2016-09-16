@@ -1,0 +1,67 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+
+my $TOPIC;
+my %LEXICON;
+
+sub phrase
+{
+	my ($phrase) = @_;
+	if (! exists $LEXICON{$phrase}) {
+		print STDERR "undefined sub-phrase ($phrase)\n";
+		exit 1;
+	}
+
+	my $i = int(rand(@{$LEXICON{$phrase}}));
+	return $LEXICON{$phrase}->[$i];
+}
+
+my $phrase;
+my $line = 0;
+my $errors = 0;
+while (<STDIN>) {
+	$line++;
+
+	chomp;
+	s/(^\s+|\+$|#.*$)//;
+	next unless $_;
+
+	if (! defined $TOPIC) {
+		$TOPIC = $_;
+		next;
+	}
+
+	if (m/(.*)\s+::$/) {
+		$phrase = $1;
+		next;
+	}
+
+	if (!$phrase) {
+		print STDERR "line $line: syntax error; expecting `<phrase> ::', got `$_'\n";
+		$errors++;
+		next;
+	}
+
+	push @{$LEXICON{$phrase}}, $_;
+}
+if (! defined $TOPIC) {
+	print STDERR "no sentence structure defined (must be the first non-blank line in the lexicon file)\n";
+	$errors++;
+}
+if ($errors != 0) {
+	print STDERR "\n>> $errors error(s) encountered.  aborting.\n";
+	exit 2;
+}
+
+my $n = @ARGV ? shift @ARGV : 1;
+die "USAGE: $0 [n] < data/definition/file\n" if @ARGV;
+
+for (my $i = 0; $i < $n; $i++) {
+	my $s = $TOPIC;
+	while ($s =~ m/\(.*?\)/) {
+		$s =~ s/\((.*?)\)/phrase($1)/ge;
+	}
+	print "$s\n";
+}
